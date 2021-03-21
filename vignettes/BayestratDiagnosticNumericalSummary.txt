@@ -1,0 +1,95 @@
+Gelman Diagnostic 
+Potential scale reduction factors:
+
+       Point est. Upper C.I.
+snp             1       1.01
+Age             1       1.00
+F               1       1.00
+lambda          1       1.00
+PC1             1       1.00
+PC2             1       1.01
+PC3             1       1.00
+PC4             1       1.00
+PC5             1       1.01
+PC10            1       1.00
+PC15            1       1.00
+PC20            1       1.01
+PC25            1       1.01
+PC30            1       1.00
+PC35            1       1.01
+PC40            1       1.00
+
+Multivariate psrf
+
+1.01
+
+
+
+Chain 1's Result 
+Raftery Diagnostic 
+
+Quantile (q) = 0.025
+Accuracy (r) = +/- 0.005
+Probability (s) = 0.95 
+                                              
+        Burn-in  Total Lower bound  Dependence
+        (M)      (N)   (Nmin)       factor (I)
+ snp    3        4212  3746         1.120     
+ Age    4        4877  3746         1.300     
+ F      3        4212  3746         1.120     
+ lambda 7        7921  3746         2.110     
+ PC1    3        4143  3746         1.110     
+ PC2    2        3916  3746         1.050     
+ PC3    2        3987  3746         1.060     
+ PC4    2        3987  3746         1.060     
+ PC5    2        3987  3746         1.060     
+ PC10   2        3845  3746         1.030     
+ PC15   2        3916  3746         1.050     
+ PC20   2        3845  3746         1.030     
+ PC25   2        3776  3746         1.010     
+ PC30   2        3845  3746         1.030     
+ PC35   2        3708  3746         0.990     
+ PC40   2        3641  3746         0.972     
+
+Acceptance Rate 
+   snp    Age      F lambda    PC1    PC2    PC3    PC4    PC5   PC10   PC15   PC20 
+     1      1      1      1      1      1      1      1      1      1      1      1 
+  PC25   PC30   PC35   PC40 
+     1      1      1      1 
+
+
+
+Chain 2's Result 
+Raftery Diagnostic 
+
+Quantile (q) = 0.025
+Accuracy (r) = +/- 0.005
+Probability (s) = 0.95 
+                                              
+        Burn-in  Total Lower bound  Dependence
+        (M)      (N)   (Nmin)       factor (I)
+ snp    2        3776  3746         1.010     
+ Age    5        5771  3746         1.540     
+ F      3        4531  3746         1.210     
+ lambda 7        7758  3746         2.070     
+ PC1    2        3987  3746         1.060     
+ PC2    2        3916  3746         1.050     
+ PC3    3        4061  3746         1.080     
+ PC4    2        3776  3746         1.010     
+ PC5    2        3745  3746         1.000     
+ PC10   2        3845  3746         1.030     
+ PC15   2        3576  3746         0.955     
+ PC20   2        3916  3746         1.050     
+ PC25   2        3845  3746         1.030     
+ PC30   2        3776  3746         1.010     
+ PC35   2        3883  3746         1.040     
+ PC40   2        3708  3746         0.990     
+
+Acceptance Rate 
+   snp    Age      F lambda    PC1    PC2    PC3    PC4    PC5   PC10   PC15   PC20 
+     1      1      1      1      1      1      1      1      1      1      1      1 
+  PC25   PC30   PC35   PC40 
+     1      1      1      1 
+
+
+

@@ -1,0 +1,290 @@
+---
+title: "The Bayestrat User's Guide"
+output:
+  pdf_document:
+    highlight: tango
+    number_sections: yes
+    toc: yes
+    toc_depth: 2
+  html_document:
+    toc: yes
+    toc_depth: '2'
+header-includes:
+  - \usepackage{pdfpages}
+bibliography: ref.bib
+vignette: >
+  %\VignetteIndexEntry{The Bayestrat User's Guide}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+The Bayestrat package is designed for Bayesian genetic association tests which identifies single-nucleotide polymorphisms (SNPs) associated with an outcome while using principle components (PCs) to account for population stratification. Because the sufficient number of PCs needed is unknown a priori, Bayestrat supports a large number of PCs to fully correct for the underlying population structures. Utilizing shrinkage priors, Bayestrat is able to filter out the irrelevant information, and select the highly confounded PCs. Bayestrat can be viewed as a compromise between the principle component regression of adding a few top PCs and the linear mixed model (LMM) which essentially includes all PCs. By shrinking the effects of irrelevant information, Bayestrat is able to achieve low type I error and high power.
+
+The current implementation supports continuous and discrete covariates and continuous only outcome variables (forthcoming for discrete outcomes). Bayestrat first computes PCs based on a null data set (if PCs are not provided), then conducts association analysis for each SNP on the testing data set. Bayestrat provides inferences for effect sizes of SNPs, PCs, and other covariates based on the Markov Chain Monte Carlo (MCMC) samples from the posterior distribution. Individuals can be clustered based on PC scores and the results can be visualized in a 3-dimensional plot. Bayestrat also supports parallel computing with multiple cores.
+
+
+# Methods
+## The Regression Model
+Let $\pmb{y}=(y_1,y_2,\cdots,y_n)^T$ be a quantitative trait vector for $n$ subjects, and $\pmb{g}=(g_1,g_2,\cdots,g_n)^T$ be a vector of genotype scores, where $g_i, i=1,2,\cdots,n$, represents the number of minor alleles individual $i$ has on a specific SNP with possible values of 0, 1 and 2. Let $\pmb{Z}=(\pmb{Z_1},\pmb{Z_2},\cdots,\pmb{Z_n})^T$ be a matrix of non-SNP covariates to be accounted for other than PCs. Let $X$ be an $n\times K$ matrix of genotype scores for $n$ individuals on $K$ null markers. If PCs are not provided, Bayestrat uses functions in R or calls PLINK to calculate PCs based on the null data $X$. Suppose there are a total of $L_{bs}$ PCs to be added to the model, and let $\pmb{R}=(\pmb{R_1},\pmb{R_2},\cdots,\pmb{R_n})^T$ be an $n\times L_{bs}$ matrix of PC scores for the corresponding $L_{bs}$ PCs. 
+
+To achieve comparability among variables, standardization is performed on the outcome, PCs and other non-SNP covariates before analysis. Specifically, $y_i$ is standardized by $y_i=\frac{y_i-\bar{y}}{sd(\pmb{y})}$, where $\bar{y}$ is the mean of the outcome and $sd(\pmb{y})$ is the standard deviation of the outcome. PCs are standardized to be comparable with SNP by $R_{il}=\frac{R_{il}-\bar{R}_{\cdot l}}{sd(R_{\cdot l})}\sqrt{\hat{p}(1-\hat{p})}$, $i=1,\cdots n\text{, and }l=1,\cdots L_{bs}$, where $\bar{R}_{\cdot l}=\frac{1}{n}\sum_{i=1}^{n}R_{il}$, $sd(R_{\cdot l})=\sqrt{\frac{1}{n-1}\sum_{i=1}^{n}(R_{il}-\bar{R}_{\cdot l})^2}$, and $\hat{p}$ is the estimated minor allele frequency. 
+
+The analysis model is:
+$$
+y_i=\mu+\pmb{Z_i}^T\pmb{\alpha}+g_i\beta+\sum_{l=1}^{L_{bs}} R_{il}\gamma_l+\epsilon_i,  \text{   for } i=1,2,\cdots,n,
+$$
+where $\mu$ is the intercept, $\pmb{\alpha}$, $\beta$ and $\pmb{\gamma}=(\gamma_1,\cdots,\gamma_L)$ are the effects of covariates, the genetic variant, and PCs, respectively, and $\epsilon_i$ represents an random error term.
+
+## Prior Distributions and Inferences
+We consider assigning $\mu$, $\pmb{\alpha}$ and $\beta$ with independent and identically distributed (i.i.d) Uniform priors on the real line. $\epsilon_i$'s are assigned with i.i.d normal priors centered at zero, i.e. $\pmb{\epsilon}=(\epsilon_1,\epsilon_2,\cdots,\epsilon_n) \sim N(\pmb{0},\sigma_e^2\pmb{I}_n)$ and $\pmb{I}_n$ is the identity matrix of size $n$. $\sigma_e^2$ is assigned the conjugate Inverse-Gamma prior $IG(a_e,b_e)$ with probability density function (PDF): $\pi(\sigma_e^2\mid a_e,b_e)=\frac{b_e^{a_e}}{\Gamma(a_e)}(\sigma_e^2)^{-a_e-1}\exp(-\frac{b_e}{\sigma_e^2}), 0<\sigma_e^2<\infty$.
+
+To fully account for the underlying genetic relationships among individuals, a relatively large number of PCs are included in the model (instead of, for example, only the top 5 PCs). Because noisy information might be introduced by irrelevant PCs, we apply a penalization scheme on the PCs to shrink the effects of irrelevant PCs and boost the signal of highly confounded ones. Specifically, we impose a Laplace prior for each $\gamma_l$,
+$$
+\pi(\gamma_l\mid \lambda,\sqrt{\sigma_e^2})=\frac{\lambda}{2\sqrt{\sigma_e^2}}\exp(-\frac{\lambda}{\sqrt{\sigma_e^2}} |\gamma_l|)),\quad -\infty<\gamma_l<\infty, \quad l=1,2,\cdots, L_{bs},
+$$
+where $\lambda>0$ is a hyperparameter contributing to the degree of shrinkage. We let $\lambda^2$ follow $Gamma(a_\lambda,b_\lambda)$ with density function $\pi(\lambda^2)=\frac{b_\lambda^{a_\lambda}}{\Gamma(a_\lambda)}\lambda^{2(a_\lambda-1)}\exp(-\lambda^2 b_\lambda), 0<\lambda^2<\infty$.
+
+Bayestrat also implements normal priors for the PC effects for completeness. $\pi(\gamma_l\mid \sigma_{\gamma}^2)\stackrel{i.i.d}{\sim} N(0,\sigma_{\gamma}^2)$. $\sigma_{\gamma}^2$ is assigned with the $IG(a_{\gamma},b_{\gamma})$ prior.
+
+The default setting is $a_e=2$, $b_e=1$, $a_\lambda=1.4$, $b_\lambda=0.4$ and $a_{\gamma}=b_{\gamma}=1$. Users can specify other values depending on specific situations. MCMC algorithms are used to sample from the posterior distributions. The implemented MCMC algorithm is adapted from R package BLR. (@perez2010genomic, @de2013genome) Significance is judged by the credible intervals not including zero under the given confidence level $\alpha$. 
+
+# Downloading Bayestrat
+The Bayestrat package can be downloaded from Github using the devtools ([link here](https://cran.r-project.org/web/packages/devtools/index.html)) R  package.
+```{r,warning=FALSE,message=FALSE}
+devtools::install_local("Bayestrat_0.1.0.tar.gz")
+```
+
+If the dependencies are not automatically downloaded (especially for Windows users), please manually download these R packages as dependencies: flashpcaR ([link here](https://github.com/gabraham/flashpca)), data.table, rgl, coda.
+
+# Using Bayestrat
+We demonstrate the usage of Bayestrat with simulated data contained in the package as an example. 
+```{r,warning=F,message=F}
+library(Bayestrat)
+```
+										
+## Data Input
+The test data set is a data frame consisting of $n$ rows ($n=$number of individuals) and $1+c+m$ columns ($c=$number of covariates, $m=$number of candidate SNPs). The first column contains the values of a continuous phenotype for each individual. The following $c$ columns consist of $c$ covariates (other than PCs) to be accounted for. The next $m$ columns consist of genotype scores (0,1 or 2) for $m$ candidate SNPs. If race information is included, the corresponding column should be named as "Race".
+
+```{r}
+data(data.test)
+dim(data.test)
+data.test[1:5,1:7]
+```
+
+## PC Computation
+Users may provide PC data set directly if it is available and thus do not require calculation from Bayestrat. The PC data set is a data frame or matrix consisting of individuals as rows and PCs as columns.
+```{r}
+data(pc)
+dim(pc)
+pc[1:5,1:5]
+```
+
+If a PC data set is not given, Bayestrat calculates PCs either internally or calls PLINK externally, depending on the size of data and the number of PCs required. 
+
+### Internal PC Computation
+Users need to provide the null data from which PCs will be calculated. The null data set should be in data frame or matrix format, consisting of $n$ rows and $K$ columns ($K=$number of null SNPs) representing genotype scores (0,1 or 2).
+```{r}
+data(data.null)
+dim(data.null)
+data.null[1:5,1:5]
+```
+
+SNPs with missing values or no sequence variation will be deleted. Therefore, users may pre-impute the missing data using any imputation software before using Bayestrat. The internal computation (set $plink=F$) is appropriate in the following two cases:
+
+1. $n.pc<min(n,K)/2$ ($n.pc$: the number of PCs added to model; $n$: the number of individuals; $K$: the number of null SNPs). In this case, Bayestrat utilizes the flashpca R package ([link here](https://github.com/gabraham/flashpca)) to calculate PCs, which is designed for fast PCA computation. (@abraham2017flashpca2)
+
+2. $n\times K\le 10^7$. In this case, Bayestrat uses $prcomp$ (@holland2008principal) to calculate PCs. The limination on the dimensions of data is needed such that the computational cost is acceptable.
+
+
+### External PC Computation
+If the internal computation is not applicable, Bayestrat calls PLINK (@purcell2007plink) to perform fast PC calculation for large data (set $plink=T$). Under the current working directory, PLINK1.9 ([download here](https://www.cog-genomics.org/plink/1.9/)) needs to be installed, PED and MAP ([introduction here](https://zzz.bwh.harvard.edu/plink/data.shtml#ped)) files for the null data are required. See section Plink Users for the details of generating PED and MAP files. The PED and MAP files should share a common filename prefix as an argument input to Bayestrat. For example, in the example data they are named as "data.null.ped" and "data.null.map", which will then be called by PLINK via the name prefix "data.null".
+
+## Running Bayestrat
+Individuals with missing values will be deleted in the analysis. Bayestrat is equipped with Laplace and normal priors for PC effects. The defalut is the shrinkage Laplace prior. Below is an example of running Bayestrat with Laplace priors and calculating PCs by calling PLINK on a 2.3 GHz Intel Core i5 processor. Since PC score is used as a measure for population stratification, race information will not be inlcuded in the model by setting $race=F$ and $n.cov=2$.
+
+```{r,warning=F,message=F}
+setwd("~/Downloads/plink1.9")
+out1<-bayestrat(data.test,data.null=NULL,data.pc=NULL,race=F,plink=T,
+								data.null.name="data.null",n.pc=40,n.cov=2,priorType="Laplace",
+								priorError=c(2,1),priorLaplace=list(type="random",G=c(1.01,0.01),
+																										startlambda=NULL),
+								priorNormal=list(type="random",IG=c(1,1),startvarPC=NULL),
+								nIter=5000,burnIn=500,minAbsBeta=1e-09,alpha=c(0.95,0.999,0.9999),
+								n.core=1,save.pc=F,checkConvergence=F,plot.interval=NULL,n.chains=1,
+								check.whichPC=c(1,2,3),check.whichSNP=1,seed=30)
+```
+
+Example of running Bayestrat by calculating PCs internally and using Laplace priors.
+```{r}
+out2<-bayestrat(data.test,data.null,race=F,plink=F,n.pc=40,n.cov=2,
+								priorLaplace=list(type="random",G=c(1.01,0.01),startlambda=NULL),
+								nIter=5000,burnIn=500,save.pc=F,seed=30)
+```
+
+Example of running Bayestrat with given PC data and normal priors. 
+```{r}
+out3<-bayestrat(data.test,data.pc=pc,race=F,n.pc=40,n.cov=2,priorType="Normal",
+								nIter=5000,burnIn=500,seed=30)
+```
+
+Example of running Bayestrat without PCs, but with three covariates including race.
+```{r}
+out4<-bayestrat(data.test,race=T,n.pc=0,n.cov=3,nIter=5000,burnIn=500,seed=30)
+```
+
+Example of running Bayestrat with no adjustment for population stratification.
+```{r}
+out5<-bayestrat(data.test[,-4],race=F,n.pc=0,n.cov=2,nIter=5000,burnIn=500,seed=30)
+```
+
+
+## Summarizing the Output
+The output from $Bayestrat$ is a list consisting of the sample sizes for testing each SNP ($n$), the estimated (posterior means) $\mu$ and $\sigma_e^2$ (varE), credible intervals and standard errors for SNP, covariate and PC effects, the estimate and standard error for $\lambda$ (if $priorType="Laplace"$) or $\sigma_{\gamma}^2$ (i.e. $varPC$, if $priorType="Normal"$). Except credible intervals and standard errors for SNP, other estimates are averaged over tesing all SNPs.
+
+```{r}
+names(out2)
+```
+
+The function $bayestratSummary$ summarizes the output from $Bayestrat$, and returns a list consisting of the estimated scaled effect sizes (raw effect size/standard error), raw effect sizes, standard errors and confidence levels for significant SNPs, covariates and PCs.
+```{r}
+result<-bayestratSummary(out2) #40PCs
+names(result)
+result$snp
+```
+
+The example data was generated such that the first 25 SNPs have some causal effects on the outcome, whereas the rest SNPs have no effect. Without adjustment for population stratification, there were 7 true positives and 4 false positives. After adjustment using 40 PCs, there were 11 true positives and 1 false positive. Notice that in this example, using race as an adjustment instead of PCs performs the best due to the data generation procedure, which detects 14 true positives and 0 false positive. In real cases, PCs may outperform races and are suggested as a way to correct for population strtification. These results can be reproduced by setting $seed=30$, but seeds shouldn't always be set in real data analysis.
+```{r}
+bayestratSummary(out5)$snp #noAdj
+bayestratSummary(out4)$snp #race
+```
+
+## Parallel Computation
+Bayestrat supports parallelism by using multiple cores for SNP analyses. Simply set $n.core$ to be the number of cores used. Parallelism is performed by the $foreach$ package. (@calaway2015package)
+```{r,message=F,warning=F}
+out6<-bayestrat(data.test,data.null,plink=F,n.pc=40,n.cov=2,
+								priorLaplace=list(type="random",G=c(1.01,0.01),startlambda=NULL),
+								nIter=5000,burnIn=500,save.pc=F,n.core=2,seed=30)
+```
+
+## Convergence Diagnostics
+By setting $checkConvergence=T$, convergence diagnostics will be performed using trace plots and the Raftrey diagnostic for one MCMC chain or the Gelman diagnostic for multiple MCMC chains. (@raftery1995number,@brooks1998general) Numerical and graphical summaries will be reported under the current working directory.
+```{r,message=F,warning=F}
+setwd("~/Documents/Genetics/bayestratDraft")
+bayestrat(data.test,data.pc=pc,n.pc=40,n.cov=2,nIter=5000,burnIn=500,checkConvergence=T,
+					n.chains=2,check.whichPC=c(1:4,seq(5,40,5)),check.whichSNP=1,seed=30)
+```
+
+The Raftery dependence factors and the Gelman reduction (shrink) factors are reported.
+Dependence factors greater than 5 or reduction (shrink) factors substantially above 1 often indicate lack of convergence. Trace plots will also be generated as graphical summaries, to evaluate convergence and mixing of multiple chains. If the sampler converges well, one chain should show one horizontal band without long-term trends or drifts, and multiple chains with different starting values should finally reach similar results. Figure 1 indicates the convergence for the example data is not problematic. The full diagnostic outputs are in section Appendix.
+
+![Diagnostics](Diagnostics.jpg){width=70%}
+
+## Data Clustering and Visualization
+The function $pcCluster$ is designed for data clustering and visualization. Individuals are clustered by the k-means algorithm based on PC scores. Users need to specify which PCs to be clustered on. If the race information is provided as a column in $data.test$ with name "Race", a confusion matrix comparing races and the clustering results will also be provided by setting $race=T$. 
+```{r,message=F,warning=F}
+data(pc)
+out6<-pcCluster(data.test,data.pc=pc,race=T,cluster=T,cluster.whichPC=c(1,2,3),
+								n.cluster=4,iter.max=10,algorithm="Hartigan-Wong",plotPC=F,
+								plot.whichPC=c(1,2,3),colorby="clusters",colors=NULL)
+out6$confusion.matrix
+```
+
+PCs can be visualized by a 3-dimensional plot in the pop-up window (set $plotPC=T$). Users need to specify which three PCs to plot. The default PCs for clustering and plotting are the first three.
+```{r,message=F,warning=F}
+out7<-pcCluster(data.test,data.pc=pc,race=T,cluster=T,n.cluster=4,plotPC=T,
+								plot.whichPC=c(1,2,3),colorby="clusters")
+```
+
+![PC 3D plot](PCplot.jpg){width=55%}
+
+# Plink Users
+The PED file has $n$ rows and $6+2\times K$ columns. The first 6 columns consist of:
+
+1. Family ID: A number indicates which family this individual belongs. Because Bayestrat is designed assuming independency, individuals should be unrelated and have different family IDs.
+
+2. Individual ID: The unique identifier of this individual within each family.
+
+3. Paternal ID: ID of the father of this individual. For Bayestrat, paternal ID should be 0 indicating founders.
+
+4. Moternal ID: ID of the mother of this individual. For Bayestrat, maternal ID should be 0 indicating founders.
+
+5. Sex: The gender of an individual. 1=male, 2=female and other=unknown.
+
+6. Phenotype: The quantitative trait value of this individual.
+
+Column 7 onwards describe the genotype information of the individual. All markers should be biallelic, i.e., each marker taking up 2 columns. The genotype data can be either alphabetic or numeric (e.g. 1,2,3,4 or A,C,G,T or anything else) except 0 which is, by default, the missing genotype character. Below is an example of creating a PED file based on 100 SNPs from the null data set.
+```{r}
+data.null<-data.null[,1:100]
+r<-nrow(data.null)
+c<-ncol(data.null)
+ped<-matrix(nrow=r,ncol=c*2+6)
+ped<-as.data.frame(ped)
+ped[,1]<-1:r
+ped[,2]<-rep(1,r)
+ped[,3]<-rep(0,r)
+ped[,4]<-rep(0,r)
+ped[,5]<-rep(1,r)
+ped[,6]<-data.test$Y
+for(i in 1:r){
+	for(j in 1:c){
+		if(data.null[i,j]=="0"){
+			ped[i,2*j-1+6]<-"C" #C major allele, A minor allele
+			ped[i,2*j+6]<-"C"
+		}else if(data.null[i,j]=="1"){
+			ped[i,2*j-1+6]<-"A"
+			ped[i,2*j+6]<-"C"
+		}else if(data.null[i,j]=="2"){
+			ped[i,2*j-1+6]<-"A"
+			ped[i,2*j+6]<-"A"
+		}
+	}
+}
+ped[1:5,1:10]
+write.table(ped,file="data.null.ped",row.names=F,col.names = F,quote=F)
+```
+
+The MAP file has $K$ rows and 4 columns: 
+
+1. Chromosome: The chromosome for this SNP. Should be numbers from 1 to 22, X or Y.
+
+2. SNP ID: Unique SNP identifier, such as rs number.
+
+3. Genetic distance (morgans)
+
+4. Base-pair position (bp units)
+
+Below is an example of creating a MAP file.
+```{r}
+map<-matrix(0,nrow=c,ncol=4)
+map<-as.data.frame(map)
+map[,1]<-rep("1",c)
+name<-c()
+for(i in 1:c){
+	name<-c(name,paste("SNP",i,sep=""))
+}
+map[,2]<-name
+map[,3]<-rep(0,c)
+map[,4]<-seq(5000,5990,10)
+head(map)
+write.table(map,file="data.null.map",row.names=F,col.names = F,quote=F)
+```
+
+# Appendix
+```{r comment='',echo=F}
+cat(readLines("BayestratDiagnosticNumericalSummary.txt"), sep = '\n')
+```
+
+\includepdf[pages=-]{BayestratDiagnosticPlot.pdf}
+
+\newpage
+
+# References
+

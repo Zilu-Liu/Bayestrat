@@ -1,0 +1,20 @@
+Package: Bayestrat
+Type: Package
+Title: Bayesian genetic association tests for single-nucleotide
+        polymorphisms accounting for population stratification
+Version: 0.1.0
+Author: Zilu Liu, Asuman Turkmen, Shili Lin
+Maintainer: Zilu Liu <liu.6536@osu.edu>
+Description: Bayestrat uses principle components (PCs) to correct for population stratification in genetic association studies for single-nucleotide polymorphisms (SNPs). The current implementation considers continuous and discrete covariates but only continuous outcomes.
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1
+Suggests: knitr, rmarkdown, foreach, doParallel
+VignetteBuilder: knitr
+Imports: flashpcaR, data.table, rgl, coda, grDevices, graphics, stats,
+        utils
+Depends: R (>= 2.10)
+Remotes: github::gabraham/flashpca/flashpcaR
+NeedsCompilation: yes
+Packaged: 2021-03-20 23:40:52 UTC; apple
