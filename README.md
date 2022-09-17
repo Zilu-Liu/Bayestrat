@@ -17,6 +17,8 @@ Bayestrat supports a large number of PCs to fully correct for the underlying pop
 
 Bayestrat first computes PCs based on a null data set (if PC data are not provided by users), then conducts association analysis for each SNP on the testing data set. Bayestrat provides inferences for effect sizes of SNPs, PCs, and other covariates based on the Markov Chain Monte Carlo (MCMC) samples from the posterior distribution.
 
+More detailed information annd intructions on using the package are provided in the package vignette.
+
 # Downloading
 The Bayestrat package can be downloaded from Github using R package [devtools](https://cran.r-project.org/web/packages/devtools/index.html).
 ```{r,warning=FALSE,message=FALSE,results=F}
