@@ -5,9 +5,9 @@ Bayestrat is a Bayesian genetic association test tool which identifies single-nu
 3. The bayestratSummary function summarizes the output from bayestrat.
 
 Bayestrat supports the following flexible model choices and advance computation.
-1. The choices of Laplace (recommanded) and normal priors on the PC effect parameters
-2. Covergence diagnostics
-3. Parallel computation with multiple cores
+1. The choices of Laplace (recommanded) and normal priors on the PC effect parameters;
+2. Covergence diagnostics;
+3. Parallel computation with multiple cores;
 4. The package interfaces with C language and may call external software [PLINK](https://www.cog-genomics.org/plink/) if needed for large scale PC computation.
 
 More detailed information annd intructions on using the package are provided in the package vignette.
@@ -18,11 +18,11 @@ Bayestrat supports a large number of PCs to fully correct for the underlying pop
 Bayestrat first computes PCs based on a null data set (if PC data are not provided by users), then conducts association analysis for each SNP on the testing data set. Bayestrat provides inferences for effect sizes of SNPs, PCs, and other covariates based on the Markov Chain Monte Carlo (MCMC) samples from the posterior distribution.
 
 # Downloading
-The Bayestrat package can be downloaded from Github using R package devtools ([link here](https://cran.r-project.org/web/packages/devtools/index.html)).
+The Bayestrat package can be downloaded from Github using R package [devtools](https://cran.r-project.org/web/packages/devtools/index.html).
 ```{r,warning=FALSE,message=FALSE,results=F}
 library(devtools)
 install_github("Zilu-Liu/Bayestrat@main")
 ```
 
-If the dependencies are not automatically downloaded (especially for Windows users), please manually download these R packages as dependencies: flashpcaR ([link here](https://github.com/gabraham/flashpca)), data.table, rgl, coda.
+If the dependencies are not automatically downloaded (especially for Windows users), please manually download these R packages as dependencies: [flashpcaR](https://github.com/gabraham/flashpca), data.table, rgl, coda.
 
